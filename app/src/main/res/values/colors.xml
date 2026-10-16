@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="brand_primary">#1456B8</color>
+    <color name="brand_primary_dark">#0B367E</color>
+    <color name="brand_secondary">#00856A</color>
+    <color name="surface_background">#F4F6F8</color>
+    <color name="text_primary">#17202A</color>
+    <color name="text_secondary">#607080</color>
+    <color name="divider">#DDE3EA</color>
+    <color name="status_warning">#A35A00</color>
+    <color name="status_success">#087A55</color>
+    <color name="status_error">#B42318</color>
+</resources>
