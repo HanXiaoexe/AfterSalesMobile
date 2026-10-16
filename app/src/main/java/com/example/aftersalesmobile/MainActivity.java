@@ -1,6 +1,7 @@
 package com.example.aftersalesmobile;
 
 import android.graphics.Color;
+import android.util.Log;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
@@ -94,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         TextInputEditText password = login.findViewById(R.id.passwordInput);
         TextView serverState = login.findViewById(R.id.serverState);
         login.findViewById(R.id.loginButton).setOnClickListener(v -> login(username, password));
-        login.findViewById(R.id.registerButton).setOnClickListener(v -> showRegisterDialog());
+        login.findViewById(R.id.registerButton).setOnClickListener(v -> showRegistrationUnavailable());
         password.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 login(username, password);
@@ -131,6 +132,14 @@ public class MainActivity extends AppCompatActivity {
             toast("登录成功");
             showShell();
         }, true);
+    }
+
+    private void showRegistrationUnavailable() {
+        new AlertDialog.Builder(this)
+                .setTitle("注册暂未开放")
+                .setMessage("当前版本处于内部测试阶段，暂不开放新用户注册。请使用已有测试账号登录。")
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     private void showRegisterDialog() {
@@ -185,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
         setHeader("服务首页", "设备、工单与反馈概览");
         runRequest(() -> {
             JSONObject result = new JSONObject();
-            result.put("products", api.get("user-products/mine").getJSONArray("data"));
+            result.put("products", arrayData(api.get("user-products/mine")));
             result.put("orders", records(api.get("orders/mine?page=1&size=100")));
             result.put("feedback", records(api.get("feedback/mine?page=1&size=100")));
             return result;
@@ -218,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadProducts() {
         setHeader("我的产品", "绑定设备并查看保修状态");
-        runRequest(() -> api.get("user-products/mine").getJSONArray("data"), this::renderProducts, true);
+        runRequest(() -> arrayData(api.get("user-products/mine")), this::renderProducts, true);
     }
 
     private void renderProducts(JSONArray products) {
@@ -257,6 +266,10 @@ public class MainActivity extends AppCompatActivity {
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             if (UiFactory.value(sn).isEmpty()) { toast("请输入 SN 码"); return; }
             String purchaseDate = UiFactory.value(date);
+            if (!purchaseDate.isEmpty() && !purchaseDate.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                toast("购买日期格式应为 YYYY-MM-DD");
+                return;
+            }
             runRequest(() -> api.post("user-products/bind", new JSONObject()
                     .put("snCode", UiFactory.value(sn))
                     .put("purchaseDate", purchaseDate.isEmpty() ? JSONObject.NULL : purchaseDate)
@@ -319,8 +332,8 @@ public class MainActivity extends AppCompatActivity {
     private void prepareCreateOrder() {
         runRequest(() -> {
             JSONObject options = new JSONObject();
-            options.put("products", api.get("user-products/mine").getJSONArray("data"));
-            options.put("centers", api.get("service-centers/options").getJSONArray("data"));
+            options.put("products", arrayData(api.get("user-products/mine")));
+            options.put("centers", arrayData(api.get("service-centers/options")));
             return options;
         }, data -> showCreateOrderDialog(data.getJSONArray("products"), data.getJSONArray("centers")), true);
     }
@@ -636,7 +649,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setLoading(boolean loading) { loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE); }
-    private void showError(Exception error) { toast(error.getMessage() == null ? "请求失败，请稍后重试" : error.getMessage()); }
+    private void showError(Exception error) {
+        String message = error.getMessage() == null || error.getMessage().trim().isEmpty()
+                ? "请求失败，请稍后重试" : error.getMessage();
+        Log.e("AfterSalesMobile", "操作失败", error);
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("操作失败")
+                .setMessage(message)
+                .setPositiveButton("知道了", null)
+                .show();
+    }
     private void toast(String message) { Toast.makeText(this, message, Toast.LENGTH_SHORT).show(); }
     private void setHeader(String title, String subtitle) { pageTitle.setText(title); pageSubtitle.setText(subtitle); }
 
@@ -730,7 +755,16 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout.LayoutParams weighted() { return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1); }
     private LinearLayout.LayoutParams weightedWithLeftMargin() { LinearLayout.LayoutParams p = weighted(); p.leftMargin = UiFactory.dp(this, 8); return p; }
 
-    private static JSONArray records(JSONObject response) { return response.optJSONObject("data") == null ? new JSONArray() : response.optJSONObject("data").optJSONArray("records"); }
+    private static JSONArray arrayData(JSONObject response) {
+        JSONArray data = response == null ? null : response.optJSONArray("data");
+        return data == null ? new JSONArray() : data;
+    }
+
+    private static JSONArray records(JSONObject response) {
+        JSONObject data = response == null ? null : response.optJSONObject("data");
+        JSONArray records = data == null ? null : data.optJSONArray("records");
+        return records == null ? new JSONArray() : records;
+    }
     private static Object nullable(String text) { return text == null || text.trim().isEmpty() ? JSONObject.NULL : text.trim(); }
     private static String textOf(TextView view) { return view.getText() == null ? "" : view.getText().toString().trim(); }
     private static void setValue(TextInputLayout input, String value) { if (input.getEditText() != null) input.getEditText().setText(value); }

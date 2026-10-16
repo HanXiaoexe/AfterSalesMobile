@@ -66,7 +66,10 @@ public final class UiFactory {
         edit.setInputType(inputType);
         edit.setSingleLine(inputType != android.text.InputType.TYPE_CLASS_TEXT
                 || (inputType & android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE) == 0);
-        box.addView(edit, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        box.addView(edit, editParams);
         return box;
     }
 
